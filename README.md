@@ -4,12 +4,10 @@ An unofficial, MIT-licensed Cursor plugin for [GMI Cloud](https://www.gmicloud.a
 
 ## Install locally
 
-Requires Node.js 20+ and npm. Build **before** enabling the plugin; Cursor does not install dependencies or compile TypeScript for you.
+Requires only Node.js 20+ at runtime. The committed `bundle/server.mjs` includes the server and its dependencies, so installation requires no npm install or build steps.
 
 ```sh
 cd /home/ubuntu/repos/gmi-cloud-cursor-plugin
-npm ci
-npm run build
 mkdir -p ~/.cursor/plugins/local
 ln -s /home/ubuntu/repos/gmi-cloud-cursor-plugin ~/.cursor/plugins/local/gmi-cloud
 ```
@@ -24,7 +22,7 @@ cursor .
 
 Completely quit any existing Cursor process first so the newly launched process inherits the key. On platforms where the GUI does not inherit shell variables, supply `GMI_CLOUD_API_KEY` through Cursor's MCP environment configuration; never commit its literal value. The plugin's `mcp.json` uses Cursor's `${env:GMI_CLOUD_API_KEY}` interpolation. Restart Cursor, check that the local plugin and `gmi-cloud` MCP server are enabled, and approve tools as appropriate. Never paste keys into chat. To uninstall, disable the plugin and remove only the local symlink.
 
-The single-plugin layout follows the [official template](https://github.com/cursor/plugin-template) and [plugin reference](https://cursor.com/docs/reference/plugins): `.cursor-plugin/plugin.json`, auto-discovered `rules/`, `skills/`, and `mcp.json`. MCP starts `node ${CURSOR_PLUGIN_ROOT}/dist/index.js`; the install path is resolved by Cursor, not hardcoded. No marketplace manifest, commands, agents, or hooks are required or included. For future marketplace installation, use Cursor's Customize → plugin installation flow once the repository is published; no GitHub URL or marketplace listing exists yet.
+The single-plugin layout follows the [official template](https://github.com/cursor/plugin-template) and [plugin reference](https://cursor.com/docs/reference/plugins): `.cursor-plugin/plugin.json`, auto-discovered `rules/`, `skills/`, and `mcp.json`. MCP starts `node ${CURSOR_PLUGIN_ROOT}/bundle/server.mjs`; the install path is resolved by Cursor, not hardcoded. No marketplace manifest, commands, agents, or hooks are required or included. For future marketplace installation, use Cursor's Customize → plugin installation flow once the repository is published; no GitHub URL or marketplace listing exists yet.
 
 ## Included
 
@@ -67,6 +65,8 @@ npm test
 npm run smoke
 ```
 
-Tests use mocked fetch through MCP's in-memory transport: routing, auth, JSON bodies, response passthrough, empty model lists, completed outcomes, invalid input, missing credentials, 401/429/500, network failure, and invalid/empty JSON. The smoke test launches the compiled server as a real stdio subprocess, initializes MCP, and asserts all six names from `tools/list` without credentials or network. Build output and dependencies are ignored by git; rebuild in any new install location.
+Tests use mocked fetch through MCP's in-memory transport: routing, auth, JSON bodies, response passthrough, empty model lists, completed outcomes, invalid input, missing credentials, 401/429/500, network failure, and invalid/empty JSON. `npm test` first runs `npm run check:bundle`, regenerating the bundle in memory and comparing bytes against the committed file; it fails if missing or stale. After source/dependency changes run `npm run build` and commit `bundle/server.mjs` along with the source and lockfile. CI should run `npm ci && npm test` without rebuilding first, so stale committed artifacts cannot be hidden.
+
+The dependency-free smoke script launches the committed bundle as a real stdio subprocess, initializes MCP, and asserts all six names from `tools/list`. Run `node scripts/smoke.mjs` in a fresh clone without `node_modules` to verify installability. No credentials or network are needed. The bundle targets Node.js 20, retains dependency license comments, and needs only Node built-ins at runtime. `dist/` and `node_modules/` remain ignored; `bundle/` is tracked.
 
 Cursor UI discovery and real paid inference require separate manual verification; these automated checks do not establish either.

@@ -2,7 +2,7 @@
   "mcpServers": {
     "gmi-cloud": {
       "command": "node",
-      "args": ["${CURSOR_PLUGIN_ROOT}/dist/index.js"],
+      "args": ["${CURSOR_PLUGIN_ROOT}/bundle/server.mjs"],
       "env": { "GMI_CLOUD_API_KEY": "${env:GMI_CLOUD_API_KEY}" }
     }
   }
