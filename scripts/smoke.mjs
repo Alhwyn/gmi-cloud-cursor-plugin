@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 
-const child = spawn(process.execPath, [fileURLToPath(new URL('../bundle/server.mjs', import.meta.url))], {
+const child = spawn('node', [fileURLToPath(new URL('../bundle/server.mjs', import.meta.url))], {
   stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, GMI_CLOUD_API_KEY: '' },
 });
 const pending = new Map();

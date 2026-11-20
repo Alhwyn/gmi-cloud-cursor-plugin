@@ -4,7 +4,7 @@ An unofficial, MIT-licensed Cursor plugin for [GMI Cloud](https://www.gmicloud.a
 
 ## Install locally
 
-Requires only Node.js 20+ at runtime. The committed `bundle/server.mjs` includes the server and its dependencies, so installation requires no npm install or build steps.
+Requires only Node.js 20+ at runtime. The committed `bundle/server.mjs` includes the server and its dependencies, so installation requires no dependency install or build steps. MCP deliberately continues to launch with `node` for end-user compatibility; Bun is only required for development and the optional live integration script.
 
 ```sh
 cd /home/ubuntu/repos/gmi-cloud-cursor-plugin
@@ -59,14 +59,33 @@ OpenAI SDK base URL: `https://api.gmi-serving.com/v1`. Queue IDs are URL-encoded
 ## Development and verification
 
 ```sh
-npm ci
-npm run build
-npm test
-npm run smoke
+bun install --frozen-lockfile
+bun run build
+bun test
+bun run check:bundle
+bun run smoke
 ```
 
-Tests use mocked fetch through MCP's in-memory transport: routing, auth, JSON bodies, response passthrough, empty model lists, completed outcomes, invalid input, missing credentials, 401/429/500, network failure, and invalid/empty JSON. `npm test` first runs `npm run check:bundle`, regenerating the bundle in memory and comparing bytes against the committed file; it fails if missing or stale. After source/dependency changes run `npm run build` and commit `bundle/server.mjs` along with the source and lockfile. CI should run `npm ci && npm test` without rebuilding first, so stale committed artifacts cannot be hidden.
+Use Bun 1.4.5 (the version pinned in `packageManager`) for reproducible output; on this machine it is `/home/ubuntu/.bun/bin/bun`. `bun.lock` is the dependency lockfile. `bun run build` type-checks the server, then invokes `bun build` targeting Node ESM with bundled packages and environment inlining disabled. No esbuild or npm tooling is used.
 
-The dependency-free smoke script launches the committed bundle as a real stdio subprocess, initializes MCP, and asserts all six names from `tools/list`. Run `node scripts/smoke.mjs` in a fresh clone without `node_modules` to verify installability. No credentials or network are needed. The bundle targets Node.js 20, retains dependency license comments, and needs only Node built-ins at runtime. `dist/` and `node_modules/` remain ignored; `bundle/` is tracked.
+Tests run with `bun test` and mocked fetch through MCP's in-memory transport: routing, auth, JSON bodies, response passthrough, empty model lists, completed outcomes, invalid input, missing credentials, 401/429/500, network failure, and invalid/empty JSON. The suite also tests the live workflow using fake tool calls and runs the bundle freshness check. `bun run check:bundle` regenerates the bundle in memory and compares bytes against the committed file; it fails if missing or stale. After source/dependency changes run `bun run build` and commit `bundle/server.mjs` along with the source and lockfile. CI should run `bun install --frozen-lockfile && bun test` without rebuilding first, so stale committed artifacts cannot be hidden.
 
-Cursor UI discovery and real paid inference require separate manual verification; these automated checks do not establish either.
+The dependency-free smoke script runs under Bun and launches the committed bundle with `node`, exactly as `mcp.json` does. It initializes MCP and asserts all six names from `tools/list`. Run `bun scripts/smoke.mjs` in a fresh clone without `node_modules` to verify installability. No credentials or network are needed. The bundle needs only Node built-ins at runtime. `dist/` and `node_modules/` remain ignored; `bundle/` is tracked.
+
+## Optional paid live integration
+
+**Not part of the test suite; running with a key spends credits.** After `bun install --frozen-lockfile`, explicitly run:
+
+```sh
+bun scripts/live.ts
+```
+
+If `GMI_CLOUD_API_KEY` is unset, the script prints a SKIP message and exits successfully without starting MCP or making requests. With a key it connects to the committed bundle over stdio using the MCP SDK (all API operations go through MCP), lists LLM/media IDs, verifies the selected media IDs exist, and fetches their schemas before making paid calls. It requests one short chat completion (16-token cap), one image, and one 4-second video. Model choice is deliberately limited to documented payloads rather than guessing parameters for arbitrary models:
+
+- Image: `flux-kontext-pro`, one square ~1MP image, no prompt upsampling. Its [model docs](https://docs.gmicloud.ai/model-quickstarts/image/flux-kontext-pro) list $0.05/image: a low-cost smoke target, not a claim that it is the cheapest model. Check current account pricing before running.
+- Video: `Veo3-Fast`, 4 seconds, 16:9, no people. The [model docs](https://docs.gmicloud.ai/model-quickstarts/video/veo3-fast) explicitly allow 4-second requests. Video is billable separately.
+- Chat: prefer `meta-llama/Llama-3.3-70B-Instruct` if available, otherwise the first listed model. Parameter support can differ; there are no automatic paid retries if it fails.
+
+For each media request it prints model ID, request ID, final status, and output URLs. It polls every 10 seconds for up to 10 minutes per job, handling `success`, `failed`, and `cancelled`; unknown statuses and tool errors fail clearly. A failed image job does not prevent attempting the video. Missing/empty discovery results stop before paid requests. Timeouts do not cancel upstream jobs, which may still complete and charge; preserve the printed request ID for manual status checks. No artifacts are downloaded or POSTs retried. A failed job, missing chat choices, tool error, or timeout produces a nonzero exit status. URLs may be signed/private: treat the console output as sensitive.
+
+Cursor UI discovery and real paid inference require separate manual verification; these automated checks do not establish either. The live script has not been run against GMI Cloud.

@@ -1,19 +1,16 @@
-import { build } from 'esbuild';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const output = new URL('../bundle/server.mjs', import.meta.url);
-const result = await build({
-  absWorkingDir: fileURLToPath(new URL('../', import.meta.url)),
-  entryPoints: ['src/index.ts'], bundle: true, platform: 'node', target: 'node20', format: 'esm',
-  banner: { js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' },
-  write: false, legalComments: 'inline',
+const result = Bun.spawn([process.execPath, 'build', 'src/index.ts', '--target=node', '--format=esm', '--packages=bundle', '--env=disable'], {
+  cwd: fileURLToPath(new URL('../', import.meta.url)), stdout: 'pipe', stderr: 'inherit',
 });
-const generated = result.outputFiles[0].contents;
+const generated = Buffer.from(await new Response(result.stdout).arrayBuffer());
+if (await result.exited !== 0) throw new Error('bun build failed');
 if (process.argv.includes('--check')) {
   const committed = await readFile(output).catch(() => Buffer.alloc(0));
   if (!committed.equals(Buffer.from(generated))) {
-    console.error('FAIL: bundle/server.mjs is missing or stale. Run npm run bundle and commit it.');
+    console.error('FAIL: bundle/server.mjs is missing or stale. Run bun run bundle and commit it.');
     process.exitCode = 1;
   } else console.log('PASS: committed bundle matches source and locked dependencies');
 } else {

@@ -4,15 +4,17 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "packageManager": "bun@1.4.5",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc && npm run bundle",
-    "bundle": "node scripts/bundle.mjs",
-    "check:bundle": "node scripts/bundle.mjs --check",
-    "test": "npm run check:bundle && tsx --test tests/*.test.ts",
-    "smoke": "node scripts/smoke.mjs"
+    "build": "tsc --noEmit && bun run bundle",
+    "bundle": "bun scripts/bundle.mjs",
+    "check:bundle": "bun scripts/bundle.mjs --check",
+    "test": "bun test",
+    "smoke": "bun scripts/smoke.mjs",
+    "live": "bun scripts/live.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -20,8 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "esbuild": "0.28.2",
-    "tsx": "^4.0.0",
+    "@types/bun": "^1.4.0",
     "typescript": "^5.0.0"
   }
 }
