@@ -1,0 +1,9 @@
+{
+  "name": "gmi-cloud",
+  "displayName": "GMI Cloud",
+  "version": "0.1.0",
+  "description": "GMI Cloud inference tools, OpenAI-compatible integration guidance, and media generation workflows.",
+  "author": { "name": "GMI Cloud Plugin Contributors" },
+  "license": "MIT",
+  "keywords": ["gmi-cloud", "inference", "gpu", "llm", "image", "video", "mcp"]
+}
